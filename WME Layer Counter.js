@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         WME Layer Counter
-// @namespace    #
+// @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
 // @author       DevlinDelFuego
 // @version      2023.9.30.0
 // @description  See how many layers you have active in WME.
