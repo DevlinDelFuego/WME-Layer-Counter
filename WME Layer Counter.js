@@ -2,7 +2,7 @@
 // @name         WME Layer Counter
 // @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
 // @author       DevlinDelFuego
-// @version      2023.9.30.2
+// @version      2023.9.30.3
 // @description  See how many layers you have active in WME.
 // @match        *://*.waze.com/*editor*
 // @exclude      *://*.waze.com/user/editor*
