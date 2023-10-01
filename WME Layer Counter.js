@@ -108,7 +108,7 @@
             GM_info.script.version,
             updateMessage,
             'https://greasyfork.org/en/scripts/476456-wme-layer-counter',
-            '#'
+            'https://www.waze.com/forum/viewtopic.php?t=394699'
         );
     }
 
