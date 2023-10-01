@@ -2,7 +2,7 @@
 // @name         WME Layer Counter
 // @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
 // @author       DevlinDelFuego
-// @version      2023.9.30.1
+// @version      2023.9.30.2
 // @description  See how many layers you have active in WME.
 // @match        *://*.waze.com/*editor*
 // @exclude      *://*.waze.com/user/editor*
@@ -17,7 +17,7 @@
     const SCRIPT_NAME = GM_info.script.name;
     const MAX_LAYERS = 81; // Maximum allowed layers
     const TOOLTIP_TEXT = 'Active Layers / Max Layers';
-    const updateMessage = "<b>Changelog</b><br><br> - Initial Release. Hope this helps those that need to know how many layers they are using. <br><br>";
+    const updateMessage = "<b>Changelog</b><br><br> - Initial Release. <br> Hope this helps those that need to know how many layers they are using. <br><br>";
 
     let _$layerCountElem = null;
 
@@ -70,10 +70,8 @@
 
     if (WazeWrap.Ready) {
         init();
-        showScriptUpdate();
     } else {
         document.addEventListener('WazeWrap.Ready', init);
-        showScriptUpdate();
     }
 
     const observer = new MutationObserver((mutationsList, observer) => {
@@ -89,15 +87,29 @@
 
     setInterval(updateLayerCount, 1000);
 
+    // Initialize the script
+    function initialize() {
+        if (W?.userscripts?.state.isReady) {
+            showScriptUpdate();
+        } else {
+            document.addEventListener('wme-ready', function () {
+                showScriptUpdate();
+            }, { once: true });
+        }
+    }
+
+    // Call the initialize function
+    initialize();
+
     // Show script update notification
-function showScriptUpdate() {
-    WazeWrap.Interface.ShowScriptUpdate(
-      'WME Layer Counter',
-      GM_info.script.version,
-      updateMessage,
-      'https://greasyfork.org/en/scripts/476456-wme-layer-counter',
-      '#'
-    );
-  }
-  
+    function showScriptUpdate() {
+        WazeWrap.Interface.ShowScriptUpdate(
+            'WME Layer Counter',
+            GM_info.script.version,
+            updateMessage,
+            'https://greasyfork.org/en/scripts/476456-wme-layer-counter',
+            '#'
+        );
+    }
+
 })();
