@@ -2,7 +2,7 @@
 // @name         WME Layer Counter
 // @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
 // @author       DevlinDelFuego
-// @version      2023.10.4.5
+// @version      2023.10.4.9
 // @description  See how many layers you have active in WME.
 // @match        *://*.waze.com/*editor*
 // @exclude      *://*.waze.com/user/editor*
@@ -19,29 +19,24 @@
 
     const SCRIPT_NAME = 'WME Layer Counter';
     const MAX_LAYERS = 81; // Maximum allowed layers
-    const TOOLTIP_TEXT = 'Active Layers / Max Layers';
-    const updateMessage = "<b>Changelog</b><br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
+    const updateMessage = "<b>Changelog</b><br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
+ 
 
     let _$layerCountElem = null;
 
     function createLayerCountElement() {
         _$layerCountElem = document.createElement('div');
-        _$layerCountElem.id = 'layer-count-monitor';
-        _$layerCountElem.className = 'toolbar-button';
-        _$layerCountElem.style.cssText = 'font-weight: bold; font-size: 16px; border-radius: 10px; margin-left: 4px; background-color: white;';
-        _$layerCountElem.setAttribute('data-toggle', 'tooltip');
-        _$layerCountElem.setAttribute('data-placement', 'auto top');
-        _$layerCountElem.setAttribute('title', '');
+        _$layerCountElem.innerHTML = `
+            <div class="toolbar-button" style="font-weight: bold; font-size: 16px; border-radius: 10px; margin-left: 4px; background-color: white;" title="Active Layers / Max Layers">
+                <div class="item-container" style="padding-left: 10px; padding-right: 10px; cursor: default;">
+                    <!-- Your content here -->
+                </div>
+            </div>`;
 
-        const innerDiv = document.createElement('div');
-        innerDiv.className = 'item-container';
-        innerDiv.style.cssText = 'padding-left: 10px; padding-right: 10px; cursor: default;';
-        innerDiv.appendChild(_$layerCountElem);
-
-        // Append innerDiv to the DOM
-        const toolbarActions = document.querySelector('.secondary-toolbar-actions');
-        if (toolbarActions) {
-            toolbarActions.appendChild(innerDiv);
+        // Append _$layerCountElem to the DOM
+        const secondaryToolbar = document.querySelector('.secondary-toolbar');
+        if (secondaryToolbar) {
+            secondaryToolbar.appendChild(_$layerCountElem);
         }
     }
 
@@ -52,11 +47,9 @@
         const activeLayers = W.controller.map.layers.length;
         const layerCountText = `${activeLayers}/${MAX_LAYERS}`;
 
-        _$layerCountElem.setAttribute('data-original-title', TOOLTIP_TEXT);
-        _$layerCountElem.textContent = layerCountText;
-
-        // Enable Bootstrap tooltip
-        $('[data-toggle="tooltip"]').tooltip();
+        // Set layer count text
+        const itemContainer = _$layerCountElem.querySelector('.item-container');
+        itemContainer.textContent = layerCountText;
     }
 
     function injectLayerCountElement() {
@@ -65,9 +58,9 @@
         }
         updateLayerCount();
 
-        const toolbarActions = document.querySelector('.secondary-toolbar-actions');
-        if (toolbarActions && !toolbarActions.querySelector('#layer-count-monitor')) {
-            toolbarActions.appendChild(_$layerCountElem);
+        const secondaryToolbar = document.querySelector('.secondary-toolbar');
+        if (secondaryToolbar && !secondaryToolbar.querySelector('#layer-count-monitor')) {
+            secondaryToolbar.appendChild(_$layerCountElem);
         }
     }
 
@@ -76,11 +69,13 @@
         if (W?.userscripts?.state.isReady) {
             createLayerCountElement();
             injectLayerCountElement();
-            W.controller.events.register('mergeend', null, updateLayerCount);
+            if (W.controller) {
+                W.controller.events.register('mergeend', null, updateLayerCount);
+            }
 
             const observer = new MutationObserver((mutationsList, observer) => {
                 for (const mutation of mutationsList) {
-                    if (mutation.type === 'childList' && mutation.target.classList.contains('secondary-toolbar-actions')) {
+                    if (mutation.type === 'childList' && mutation.target.classList.contains('secondary-toolbar')) {
                         injectLayerCountElement();
                         observer.disconnect();
                     }
