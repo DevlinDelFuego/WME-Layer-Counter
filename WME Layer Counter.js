@@ -2,7 +2,7 @@
 // @name         WME Layer Counter
 // @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
 // @author       DevlinDelFuego
-// @version      2023.10.4.9
+// @version      2024.7.8.1
 // @description  See how many layers you have active in WME.
 // @match        *://*.waze.com/*editor*
 // @exclude      *://*.waze.com/user/editor*
@@ -18,9 +18,7 @@
     'use strict';
 
     const SCRIPT_NAME = 'WME Layer Counter';
-    const MAX_LAYERS = 81; // Maximum allowed layers
-    const updateMessage = "<b>Changelog</b><br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
- 
+    const updateMessage = "<b>Changelog</b><br><br>Update 2024.7.8.1<br>- Updated the way max layers are calculated.<br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
 
     let _$layerCountElem = null;
 
@@ -44,8 +42,12 @@
         if (!_$layerCountElem) {
             createLayerCountElement();
         }
-        const activeLayers = W.controller.map.layers.length;
-        const layerCountText = `${activeLayers}/${MAX_LAYERS}`;
+        const activeLayers = W.map.olMap.layers.filter(layer => layer.visibility).length;
+        const featureLayer = W.map.olMap.Z_INDEX_BASE.Feature;
+        const overlayLayer = W.map.olMap.Z_INDEX_BASE.Overlay;
+        const maxLayers = (featureLayer - overlayLayer) / 5;
+
+        const layerCountText = `${activeLayers}/${maxLayers}`;
 
         // Set layer count text
         const itemContainer = _$layerCountElem.querySelector('.item-container');
