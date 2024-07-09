@@ -1,8 +1,7 @@
 // ==UserScript==
 // @name         WME Layer Counter
 // @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
-// @author       DevlinDelFuego
-// @version      2024.7.8.1
+// @version      2024.7.4.2
 // @description  See how many layers you have active in WME.
 // @match        *://*.waze.com/*editor*
 // @exclude      *://*.waze.com/user/editor*
@@ -18,14 +17,14 @@
     'use strict';
 
     const SCRIPT_NAME = 'WME Layer Counter';
-    const updateMessage = "<b>Changelog</b><br><br>Update 2024.7.8.1<br>- Updated the way max layers are calculated.<br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
+    const updateMessage = "<b>Changelog</b><br><br>Update 2024.7.4.2<br>- Added cool color change based on active layers.<br><br>Update 2024.7.8.1<br>- Updated the way max layers are calculated.<br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
 
     let _$layerCountElem = null;
 
     function createLayerCountElement() {
         _$layerCountElem = document.createElement('div');
         _$layerCountElem.innerHTML = `
-            <div class="toolbar-button" style="font-weight: bold; font-size: 16px; border-radius: 10px; margin-left: 4px; background-color: white;" title="Active Layers / Max Layers">
+            <div id="layer-count-monitor" class="toolbar-button" style="font-weight: bold; font-size: 16px; border-radius: 10px; margin-left: 4px;" title="Active Layers / Max Layers">
                 <div class="item-container" style="padding-left: 10px; padding-right: 10px; cursor: default;">
                     <!-- Your content here -->
                 </div>
@@ -52,6 +51,22 @@
         // Set layer count text
         const itemContainer = _$layerCountElem.querySelector('.item-container');
         itemContainer.textContent = layerCountText;
+
+        // Set button color based on active layers
+        let backgroundColor = 'white';
+        if (activeLayers > 45) {
+            const percentage = (activeLayers - 45) / (maxLayers - 45);
+            if (percentage <= 0.25) {
+                backgroundColor = 'green';
+            } else if (percentage <= 0.5) {
+                backgroundColor = 'yellow';
+            } else if (percentage <= 0.75) {
+                backgroundColor = 'orange';
+            } else {
+                backgroundColor = 'red';
+            }
+        }
+        _$layerCountElem.querySelector('.toolbar-button').style.backgroundColor = backgroundColor;
     }
 
     function injectLayerCountElement() {
