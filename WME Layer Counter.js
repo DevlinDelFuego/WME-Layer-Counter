@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME Layer Counter
 // @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
-// @version      2024.7.9.5
+// @version      2024.7.15.1
 // @description  See how many layers you have active in WME.
 // @match        *://*.waze.com/*editor*
 // @exclude      *://*.waze.com/user/editor*
@@ -17,11 +17,11 @@
     'use strict';
 
     const SCRIPT_NAME = 'WME Layer Counter';
-    const updateMessage = "<b>Changelog</b><br><br>Update 2024.7.9.5<br>- Fixed code.<br><br>Update 2024.7.9.3<br>- Moved layer counter over to the tab section. If you prefer, you can still have it show on the right.<br><br>Update 2024.7.9.1<br>- Removed colors.<br><br>Update 2024.7.4.2<br>- Added dynamic button color change based on active layers.<br><br>Update 2024.7.8.1<br>- Updated the way max layers are calculated.<br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
+    const updateMessage = "<b>Changelog</b><br><br>Update 2024.7.15.1<br>- I can now remember your choice.<br><br>Update 2024.7.9.5<br>- Fixed code.<br><br>Update 2024.7.9.3<br>- Moved layer counter over to the tab section. If you prefer, you can still have it show on the right.<br><br>Update 2024.7.9.1<br>- Removed colors.<br><br>Update 2024.7.4.2<br>- Added dynamic button color change based on active layers.<br><br>Update 2024.7.8.1<br>- Updated the way max layers are calculated.<br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
     const scriptVersion = GM_info.script.version;
 
     let _$layerCountElem = null;
-    let _isButtonVisible = false; // Unchecked by default
+    let _isButtonVisible = JSON.parse(localStorage.getItem('wmeLayerCounterButtonVisible')) || false;
 
     function createLayerCountElement() {
         _$layerCountElem = document.createElement('div');
@@ -62,6 +62,7 @@
 
     function toggleLayerCountButton() {
         _isButtonVisible = !_isButtonVisible;
+        localStorage.setItem('wmeLayerCounterButtonVisible', JSON.stringify(_isButtonVisible));
         injectLayerCountElement();
     }
 
