@@ -1,34 +1,65 @@
 // ==UserScript==
 // @name         WME Layer Counter
 // @namespace    https://greasyfork.org/en/scripts/476456-wme-layer-counter
-// @version      2025.12.26.1
+// @version      2026.5.7.1
 // @description  See how many layers you have active in WME.
 // @match        *://*.waze.com/*editor*
 // @exclude      *://*.waze.com/user/editor*
 // @grant        none
-// @require      https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @license      GPLv3
 // ==/UserScript==
-
-/* global WazeWrap */
 
 (function main() {
     'use strict';
 
     const SCRIPT_NAME = 'WME Layer Counter';
     const SCRIPT_ID = 'wme-layer-counter';
-    const updateMessage = "<b>Changelog</b><br><br>Update 2025.12.26<br>- Updated to new SDK.<br><br>Update 2024.7.15.1<br>- I can now remember your choice.<br><br>Update 2024.7.9.5<br>- Fixed code.<br><br>Update 2024.7.9.3<br>- Moved layer counter over to the tab section. If you prefer, you can still have it show on the right.<br><br>Update 2024.7.9.1<br>- Removed colors.<br><br>Update 2024.7.4.2<br>- Added dynamic button color change based on active layers.<br><br>Update 2024.7.8.1<br>- Updated the way max layers are calculated.<br><br>Update 2023.10.4.8<br>- Found out Layer Counter wanted to hangout with the cool kids from the FUME block. I scolded him and told him he can't hangout with them. I then sent him to the corner and told him not to move again.<br><br>Update 2023.10.4.5<br>- Fixed no display issue.<br><br>Initial Release.<br>- Hope this helps those that need to know how many layers they are using.<br><br>";
     const scriptVersion = GM_info.script.version;
 
     let _$layerCountElem = null;
     let _isButtonVisible = JSON.parse(localStorage.getItem('wmeLayerCounterButtonVisible')) || false;
+    let _wmeSDK = null;
+
+    // layerName -> { visible: boolean } — populated via SDK layer events
+    const layerRegistry = new Map();
+
+    function setupLayerTracking(wmeSDK) {
+        wmeSDK.Events.on({
+            eventName: 'wme-map-layer-added',
+            eventHandler: ({ layerName }) => {
+                let visible = false;
+                try { visible = wmeSDK.Map.isLayerVisible({ layerName }); } catch (e) {}
+                layerRegistry.set(layerName, { visible });
+            }
+        });
+        wmeSDK.Events.on({
+            eventName: 'wme-map-layer-removed',
+            eventHandler: ({ layerName }) => layerRegistry.delete(layerName)
+        });
+        wmeSDK.Events.on({
+            eventName: 'wme-map-layer-changed',
+            eventHandler: ({ layerName }) => {
+                let visible = false;
+                try { visible = wmeSDK.Map.isLayerVisible({ layerName }); } catch (e) {}
+                layerRegistry.set(layerName, { visible });
+            }
+        });
+    }
+
+    function getLayerCounts() {
+        let active = 0;
+        for (const { visible } of layerRegistry.values()) {
+            if (visible) active++;
+        }
+        return { active, total: layerRegistry.size };
+    }
 
     function createLayerCountElement() {
         if (document.getElementById('layer-count-monitor')) return;
 
         _$layerCountElem = document.createElement('div');
         _$layerCountElem.innerHTML = `
-            <div id="layer-count-monitor" class="toolbar-button" style="font-weight: bold; font-size: 16px; border-radius: 10px; margin-left: 4px; background-color: white;" title="Active Layers / Max Layers">
+            <div id="layer-count-monitor" class="toolbar-button" style="font-weight: bold; font-size: 16px; border-radius: 10px; margin-left: 4px; background-color: white;" title="Active Layers / Total Layers">
                 <div class="item-container" style="padding-left: 10px; padding-right: 10px; cursor: default;">
                 </div>
             </div>`;
@@ -47,18 +78,12 @@
             createLayerCountElement();
         }
 
-        const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow.W : window.W;
-        if (!W || !W.map || !W.map.olMap) return;
-
-        const activeLayers = W.map.olMap.layers.filter(layer => layer.visibility).length;
-        const featureLayer = W.map.olMap.Z_INDEX_BASE.Feature;
-        const overlayLayer = W.map.olMap.Z_INDEX_BASE.Overlay;
-        const maxLayers = (featureLayer - overlayLayer) / 5;
+        const { active, total } = getLayerCounts();
 
         if (_$layerCountElem) {
             const itemContainer = _$layerCountElem.querySelector('.item-container');
             if (itemContainer) {
-                itemContainer.textContent = `${activeLayers}/${maxLayers}`;
+                itemContainer.textContent = `${active}/${total}`;
             }
         }
     }
@@ -82,12 +107,47 @@
         injectLayerCountElement();
     }
 
-    async function addScriptTab(wmeSDK) {
-        if (typeof WazeWrap === 'undefined') {
-            console.log('WazeWrap is not available. Exiting script.');
-            return;
+    const CHANGELOG = [
+        { version: '2026.5.7.1', notes: 'Removed deprecated W.map.olMap. Layer tracking now uses SDK events. Removed WazeWrap dependency. Active/Total replaces Active/Max.' },
+        { version: '2025.12.26.1', notes: 'Updated to new WME SDK.' },
+        { version: '2024.7.15.1', notes: 'Script now remembers your show/hide choice.' },
+    ];
+
+    function showChangelogBanner(tabPane) {
+        const lastSeen = localStorage.getItem('wmeLayerCounterLastVersion');
+        if (lastSeen === scriptVersion) return;
+
+        const newEntries = CHANGELOG.filter(entry => !lastSeen || entry.version > lastSeen);
+        if (newEntries.length === 0) return;
+
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#fffbe6;border:1px solid #f0c040;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12px;';
+
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:bold;margin-bottom:4px;';
+        title.textContent = "What's New";
+        banner.appendChild(title);
+
+        for (const entry of newEntries) {
+            const line = document.createElement('div');
+            line.style.marginBottom = '3px';
+            line.innerHTML = `<b>${entry.version}</b> — ${entry.notes}`;
+            banner.appendChild(line);
         }
 
+        const dismissBtn = document.createElement('button');
+        dismissBtn.textContent = 'Got it';
+        dismissBtn.style.cssText = 'margin-top:6px;padding:2px 10px;cursor:pointer;';
+        dismissBtn.addEventListener('click', () => {
+            localStorage.setItem('wmeLayerCounterLastVersion', scriptVersion);
+            banner.remove();
+        });
+        banner.appendChild(dismissBtn);
+
+        tabPane.insertBefore(banner, tabPane.firstChild);
+    }
+
+    async function addScriptTab(wmeSDK) {
         let tabLabel, tabPane;
         try {
             const result = await wmeSDK.Sidebar.registerScriptTab();
@@ -123,18 +183,9 @@
         activeLayersText.id = 'active-layers';
         tabPane.appendChild(activeLayersText);
 
-        const activeLayersTextForButton = document.createElement('p');
-        activeLayersTextForButton.id = 'active-layers-button';
-        activeLayersTextForButton.style.display = 'none';
-        tabPane.appendChild(activeLayersTextForButton);
-
-        const createdLayersText = document.createElement('p');
-        createdLayersText.id = 'created-layers';
-        tabPane.appendChild(createdLayersText);
-
-        const maxLayersText = document.createElement('p');
-        maxLayersText.id = 'max-layers';
-        tabPane.appendChild(maxLayersText);
+        const totalLayersText = document.createElement('p');
+        totalLayersText.id = 'total-layers';
+        tabPane.appendChild(totalLayersText);
 
         const madeBy = document.createElement('p');
         madeBy.textContent = 'Made by DevlinDelFuego';
@@ -146,48 +197,29 @@
         version.style.margin = '0';
         tabPane.appendChild(version);
 
-        updateTabContent(wmeSDK, activeLayersText, activeLayersTextForButton, createdLayersText, maxLayersText);
+        showChangelogBanner(tabPane);
+        updateTabContent(activeLayersText, totalLayersText);
 
         setInterval(() => {
-            updateTabContent(wmeSDK, activeLayersText, activeLayersTextForButton, createdLayersText, maxLayersText);
+            updateTabContent(activeLayersText, totalLayersText);
             if (_isButtonVisible) {
                 updateLayerCount();
             }
         }, 1000);
     }
 
-    function updateTabContent(wmeSDK, activeLayersText, activeLayersTextForButton, createdLayersText, maxLayersText) {
-        // Since we still have access to W and some features might not be fully in SDK yet,
-        // we use a mix but try to use SDK where possible.
-        // Counting layers is still easiest via W.map.olMap.layers as SDK doesn't have a getLayers() yet.
-        const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow.W : window.W;
-        const activeLayers = W.map.olMap.layers.filter(layer => layer.visibility).length;
-        const createdLayers = W.map.olMap.layers.length;
-        const featureLayer = W.map.olMap.Z_INDEX_BASE.Feature;
-        const overlayLayer = W.map.olMap.Z_INDEX_BASE.Overlay;
-        const maxLayers = (featureLayer - overlayLayer) / 5;
-
-        if (activeLayersText) activeLayersText.textContent = `Active Layers: ${activeLayers}`;
-        if (activeLayersTextForButton) activeLayersTextForButton.textContent = `${activeLayers}/${maxLayers}`;
-        if (createdLayersText) createdLayersText.textContent = `Created Layers: ${createdLayers}`;
-        if (maxLayersText) maxLayersText.textContent = `Max Layers: ${maxLayers}`;
+    function updateTabContent(activeLayersText, totalLayersText) {
+        const { active, total } = getLayerCounts();
+        if (activeLayersText) activeLayersText.textContent = `Active Layers: ${active}`;
+        if (totalLayersText) totalLayersText.textContent = `Total Layers: ${total}`;
     }
 
     function observeLayerChanges(wmeSDK) {
         const updateAll = () => {
             const activeLayersText = document.getElementById('active-layers');
-            const activeLayersTextForButton = document.getElementById('active-layers-button');
-            const createdLayersText = document.getElementById('created-layers');
-            const maxLayersText = document.getElementById('max-layers');
-
-            if (activeLayersText || activeLayersTextForButton || createdLayersText || maxLayersText) {
-                updateTabContent(
-                    wmeSDK,
-                    activeLayersText,
-                    activeLayersTextForButton,
-                    createdLayersText,
-                    maxLayersText
-                );
+            const totalLayersText = document.getElementById('total-layers');
+            if (activeLayersText || totalLayersText) {
+                updateTabContent(activeLayersText, totalLayersText);
             }
             if (_isButtonVisible) {
                 updateLayerCount();
@@ -211,11 +243,11 @@
                 if (win.SDK_INITIALIZED) {
                     win.SDK_INITIALIZED.then(() => {
                         if (typeof win.getWmeSdk === 'function') {
-                            const wmeSDK = win.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
-                            addScriptTab(wmeSDK);
+                            _wmeSDK = win.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
+                            setupLayerTracking(_wmeSDK);
+                            addScriptTab(_wmeSDK);
                             injectLayerCountElement();
-                            observeLayerChanges(wmeSDK);
-                            showScriptUpdate();
+                            observeLayerChanges(_wmeSDK);
                         }
                     });
                 }
@@ -225,11 +257,11 @@
 
         sdkInit.then(() => {
             if (typeof currentWindow.getWmeSdk === 'function') {
-                const wmeSDK = currentWindow.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
-                addScriptTab(wmeSDK);
+                _wmeSDK = currentWindow.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
+                setupLayerTracking(_wmeSDK);
+                addScriptTab(_wmeSDK);
                 injectLayerCountElement();
-                observeLayerChanges(wmeSDK);
-                showScriptUpdate();
+                observeLayerChanges(_wmeSDK);
             } else {
                 console.error('WME SDK getWmeSdk function not found.');
             }
@@ -239,24 +271,5 @@
     // Call the initialize function
     initialize();
 
-    // Show script update notification
-    function showScriptUpdate() {
-        const ww = typeof unsafeWindow !== 'undefined' ? unsafeWindow.WazeWrap : window.WazeWrap;
-        if (ww && ww.Interface && typeof ww.Interface.ShowScriptUpdate === 'function') {
-            try {
-                ww.Interface.ShowScriptUpdate(
-                    SCRIPT_NAME,
-                    GM_info.script.version,
-                    updateMessage,
-                    'https://greasyfork.org/en/scripts/476456-wme-layer-counter',
-                    'https://www.waze.com/forum/viewtopic.php?t=394699'
-                );
-            } catch (error) {
-                console.error('Error showing script update:', error);
-            }
-        } else {
-            console.log('WazeWrap.Interface.ShowScriptUpdate not available. Skipping update message.');
-        }
-    }
 
 })();
